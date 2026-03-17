@@ -5,26 +5,7 @@ const { Op } = require('sequelize');
 const User = require('../models/User');
 const Token = require('../models/Token');
 const emailService = require('../services/email');
-
-function validatePassword(password) {
-  if (password.length < 8) {
-    return 'Password must be at least 8 characters long.';
-  }
-
-  if (!/[A-Z]/.test(password)) {
-    return 'Password must contain at least one uppercase letter.';
-  }
-
-  if (!/[a-z]/.test(password)) {
-    return 'Password must contain at least one lowercase letter.';
-  }
-
-  if (!/[0-9]/.test(password)) {
-    return 'Password must contain at least one digit.';
-  }
-
-  return null;
-}
+const { validatePassword } = require('../utils/validation');
 
 function tokenExpiresAt(hours = 1) {
   return new Date(Date.now() + hours * 60 * 60 * 1000);
@@ -49,7 +30,7 @@ async function changeName(req, res) {
 
   await User.update(
     { name: name.trim() },
-    { where: { id: req.session.userId } }
+    { where: { id: req.session.userId } },
   );
 
   req.session.userName = name.trim();
@@ -79,7 +60,10 @@ async function changePassword(req, res) {
 
   const hashed = await bcrypt.hash(newPassword, 10);
 
-  await User.update({ password: hashed }, { where: { id: req.session.userId } });
+  await User.update(
+    { password: hashed },
+    { where: { id: req.session.userId } },
+  );
 
   res.json({ message: 'Password updated successfully.' });
 }
@@ -96,7 +80,9 @@ async function requestEmailChange(req, res) {
   }
 
   if (!newEmail || newEmail === user.email) {
-    return res.status(400).json({ error: 'Please provide a different email address.' });
+    return res
+      .status(400)
+      .json({ error: 'Please provide a different email address.' });
   }
 
   const existing = await User.findOne({ where: { email: newEmail } });
@@ -114,9 +100,15 @@ async function requestEmailChange(req, res) {
     expiresAt: tokenExpiresAt(1),
   });
 
-  await emailService.sendEmailChangeNotification(user.email, newEmail, token.id);
+  await emailService.sendEmailChangeNotification(
+    user.email,
+    newEmail,
+    token.id,
+  );
 
-  res.json({ message: 'Confirmation email sent. Check your new email address.' });
+  res.json({
+    message: 'Confirmation email sent. Check your new email address.',
+  });
 }
 
 // GET /api/profile/confirm-email-change/:token
@@ -130,7 +122,9 @@ async function confirmEmailChange(req, res) {
   });
 
   if (!token) {
-    return res.status(400).json({ error: 'This link is invalid or has expired.' });
+    return res
+      .status(400)
+      .json({ error: 'This link is invalid or has expired.' });
   }
 
   await User.update({ email: token.data }, { where: { id: token.userId } });

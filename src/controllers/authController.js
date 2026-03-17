@@ -5,26 +5,7 @@ const { Op } = require('sequelize');
 const User = require('../models/User');
 const Token = require('../models/Token');
 const emailService = require('../services/email');
-
-function validatePassword(password) {
-  if (password.length < 8) {
-    return 'Password must be at least 8 characters long.';
-  }
-
-  if (!/[A-Z]/.test(password)) {
-    return 'Password must contain at least one uppercase letter.';
-  }
-
-  if (!/[a-z]/.test(password)) {
-    return 'Password must contain at least one lowercase letter.';
-  }
-
-  if (!/[0-9]/.test(password)) {
-    return 'Password must contain at least one digit.';
-  }
-
-  return null;
-}
+const { validatePassword } = require('../utils/validation');
 
 function tokenExpiresAt(hours = 24) {
   return new Date(Date.now() + hours * 60 * 60 * 1000);
@@ -82,7 +63,10 @@ async function register(req, res) {
 
   await emailService.sendActivationEmail(email, token.id);
 
-  res.json({ message: 'Registration successful! Check your email to activate your account.' });
+  res.json({
+    message:
+      'Registration successful! Check your email to activate your account.',
+  });
 }
 
 // POST /api/auth/activate/:token
@@ -96,13 +80,23 @@ async function activate(req, res) {
   });
 
   if (!token) {
-    return res.status(400).json({ error: 'This activation link is invalid or has expired.' });
+    return res
+      .status(400)
+      .json({ error: 'This activation link is invalid or has expired.' });
   }
 
   await User.update({ isActive: true }, { where: { id: token.userId } });
+
+  const user = await User.findByPk(token.userId, {
+    attributes: ['id', 'name', 'email'],
+  });
+
   await token.destroy();
 
-  res.json({ message: 'Your account has been activated! You can now log in.' });
+  req.session.userId = user.id;
+  req.session.userName = user.name;
+
+  res.json({ user });
 }
 
 // POST /api/auth/login
@@ -161,7 +155,10 @@ async function forgotPassword(req, res) {
     await emailService.sendPasswordResetEmail(email, token.id);
   }
 
-  res.json({ message: 'If an account with that email exists, a reset link has been sent.' });
+  res.json({
+    message:
+      'If an account with that email exists, a reset link has been sent.',
+  });
 }
 
 // POST /api/auth/reset-password/:token
@@ -177,7 +174,9 @@ async function resetPassword(req, res) {
   });
 
   if (!token) {
-    return res.status(400).json({ error: 'This reset link is invalid or has expired.' });
+    return res
+      .status(400)
+      .json({ error: 'This reset link is invalid or has expired.' });
   }
 
   if (password !== confirmation) {
