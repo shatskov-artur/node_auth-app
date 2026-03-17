@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 function Section({ title, children }) {
@@ -17,10 +17,9 @@ function Alert({ type, message }) {
 }
 
 export default function Profile() {
-  const { login } = useAuth();
-  const [user, setUser] = useState(null);
+  const { user, login } = useAuth();
 
-  const [nameField, setNameField] = useState('');
+  const [nameField, setNameField] = useState(user?.name ?? '');
   const [nameMsg, setNameMsg] = useState({ type: '', text: '' });
 
   const [passwordFields, setPasswordFields] = useState({ oldPassword: '', newPassword: '', confirmation: '' });
@@ -28,15 +27,6 @@ export default function Profile() {
 
   const [emailFields, setEmailFields] = useState({ newEmail: '', password: '' });
   const [emailMsg, setEmailMsg] = useState({ type: '', text: '' });
-
-  useEffect(() => {
-    fetch('/api/profile', { credentials: 'include' })
-      .then((res) => res.json())
-      .then((data) => {
-        setUser(data.user);
-        setNameField(data.user.name);
-      });
-  }, []);
 
   async function handleNameSubmit(e) {
     e.preventDefault();
@@ -55,7 +45,6 @@ export default function Profile() {
       return setNameMsg({ type: 'error', text: data.error });
     }
 
-    setUser((prev) => ({ ...prev, name: nameField }));
     login({ ...user, name: nameField });
     setNameMsg({ type: 'success', text: data.message });
   }

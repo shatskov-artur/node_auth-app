@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Activate() {
   const { token } = useParams();
+  const { login } = useAuth();
+  const navigate = useNavigate();
   const [status, setStatus] = useState('loading');
   const [message, setMessage] = useState('');
 
@@ -14,8 +17,8 @@ export default function Activate() {
           setStatus('error');
           setMessage(data.error);
         } else {
-          setStatus('success');
-          setMessage(data.message);
+          login(data.user);
+          navigate('/profile');
         }
       });
   }, [token]);
@@ -24,19 +27,9 @@ export default function Activate() {
 
   return (
     <div className="container">
-      {status === 'success' ? (
-        <>
-          <h1>Account activated!</h1>
-          <div className="alert alert-success">{message}</div>
-          <div className="links"><Link to="/login">Log in</Link></div>
-        </>
-      ) : (
-        <>
-          <h1>Invalid link</h1>
-          <div className="alert alert-error">{message}</div>
-          <div className="links"><Link to="/register">Register</Link></div>
-        </>
-      )}
+      <h1>Invalid link</h1>
+      <div className="alert alert-error">{message}</div>
+      <div className="links"><Link to="/register">Register</Link></div>
     </div>
   );
 }
